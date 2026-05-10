@@ -4,7 +4,7 @@
  * AUTHOR: วิ (AI Assistant)
  */
 
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbz6I5BS3hhZ47KnMDAKmSnsLtc5vS2PfTCzmNuV7hXTEZTopPaMQLxDmCQllgj6erNU/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyv-YdeoBNXojhXO6x-sgs2GInQBLrFly0Spz7lJrcuYBGC5smGY3UD06flyOzoRN4v9w/exec';
 
 let globalExamData = null;
 let globalSurveyData = null;
