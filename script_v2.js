@@ -13,6 +13,13 @@ let currentSurveyType = '';
 let selectedSpeakerId = null;
 let examCountdown = null;
 let isExamActive = false;
+let sessionPersonalId = '';
+
+function getSessionPersonalId() {
+    if (sessionPersonalId) return sessionPersonalId;
+    sessionPersonalId = localStorage.getItem("tms_personal_id") || '';
+    return sessionPersonalId;
+}
 
 function formatThaiDate(dateStr) {
     const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -28,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ล้าง session ทุกครั้งที่โหลดหน้าใหม่ → บังคับ Login ใหม่เสมอ
     localStorage.removeItem("tms_personal_id");
     localStorage.removeItem("tms_user_data");
+    sessionPersonalId = '';
 });
 
 function renderUserInfo() {
@@ -52,6 +60,7 @@ async function login() {
         });
         let result = await response.json();
         if (result.status === 'success') {
+            sessionPersonalId = id;
             localStorage.setItem("tms_personal_id", id);
             localStorage.setItem("tms_user_data", JSON.stringify(result.data));
             renderUserInfo(); showDashboard();
@@ -195,7 +204,11 @@ function openUserSearchPopup() {
     });
 }
 
-function logout() { localStorage.removeItem("tms_personal_id"); location.reload(); }
+function logout() {
+    sessionPersonalId = '';
+    localStorage.removeItem("tms_personal_id");
+    location.reload();
+}
 
 function showDashboard() {
     document.getElementById("loginSection").classList.add("d-none");
@@ -232,7 +245,7 @@ async function openAttendanceForm() {
 
     try {
         let response = await fetch(GAS_API_URL, {
-            method: 'POST', body: JSON.stringify({ action: 'getAttendanceData', payload: { personal_id: localStorage.getItem("tms_personal_id") } })
+            method: 'POST', body: JSON.stringify({ action: 'getAttendanceData', payload: { personal_id: getSessionPersonalId() } })
         });
         let result = await response.json();
 
@@ -353,7 +366,7 @@ async function submitRealAttendance(day, slot, status, slotDate, slotStartTime) 
     let finalNote = userNote !== "" ? "[" + status + "] " + userNote : "[" + status + "]";
     Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
     try {
-        await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'submitAttendance', payload: { personal_id: localStorage.getItem("tms_personal_id"), day_no: day, time_slot: slot, note: finalNote } }) });
+        await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'submitAttendance', payload: { personal_id: getSessionPersonalId(), day_no: day, time_slot: slot, note: finalNote } }) });
         openAttendanceForm(); Swal.close();
     } catch (e) { Swal.fire('ผิดพลาด', 'ส่งข้อมูลไม่สำเร็จ', 'error'); }
 }
@@ -368,7 +381,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function saveExamDraft(questionId, selectedValue) {
-    let userId = localStorage.getItem("tms_personal_id");
+    let userId = getSessionPersonalId();
     let draftKey = "tms_draft_" + userId + "_" + globalExamData.activeExam.type;
     let draftData = JSON.parse(localStorage.getItem(draftKey) || "{}");
     draftData[questionId] = selectedValue;
@@ -384,7 +397,7 @@ async function openExamForm() {
     document.getElementById("examTitleLabel").innerText = "กำลังตรวจสอบแบบทดสอบ...";
     contentArea.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-warning"></div></div>`;
     try {
-        let response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getExamData', payload: { personal_id: localStorage.getItem("tms_personal_id") } }) });
+        let response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getExamData', payload: { personal_id: getSessionPersonalId() } }) });
         let result = await response.json();
         if (result.status === 'success') {
             globalExamData = result;
@@ -448,7 +461,7 @@ function startExamTimer() {
 
 function renderExamQuestions() {
     let html = ''; const labels = ['ก.', 'ข.', 'ค.', 'ง.'];
-    let userId = localStorage.getItem("tms_personal_id");
+    let userId = getSessionPersonalId();
     let draftKey = "tms_draft_" + userId + "_" + globalExamData.activeExam.type;
     let draftData = JSON.parse(localStorage.getItem(draftKey) || "{}");
 
@@ -483,8 +496,8 @@ async function submitRealExam(isAuto = false) {
 
     Swal.fire({ title: 'กำลังบันทึกคะแนน...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
     try {
-        await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'submitExam', payload: { personal_id: localStorage.getItem("tms_personal_id"), test_type: globalExamData.activeExam.type, score: score, max_score: maxScore } }) });
-        localStorage.removeItem("tms_draft_" + localStorage.getItem("tms_personal_id") + "_" + globalExamData.activeExam.type);
+        await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'submitExam', payload: { personal_id: getSessionPersonalId(), test_type: globalExamData.activeExam.type, score: score, max_score: maxScore } }) });
+        localStorage.removeItem("tms_draft_" + getSessionPersonalId() + "_" + globalExamData.activeExam.type);
         let percentage = (score / maxScore) * 100;
         if (globalExamData.activeExam.type === 'PRE') {
             Swal.fire({ icon: 'info', title: 'บันทึกสำเร็จ!', text: `คะแนน ${score}`, confirmButtonColor: '#0dcaf0' }).then(() => { backToDashboard('examSection'); });
@@ -511,7 +524,7 @@ async function openSurveyForm(type) {
         try {
             let response = await fetch(GAS_API_URL, {
                 method: 'POST',
-                body: JSON.stringify({ action: 'getSurveyData', payload: { survey_type: type, personal_id: localStorage.getItem("tms_personal_id") } })
+                body: JSON.stringify({ action: 'getSurveyData', payload: { survey_type: type, personal_id: getSessionPersonalId() } })
             });
             globalSurveyData = await response.json();
             Swal.close();
@@ -604,7 +617,7 @@ async function openSurveyForm(type) {
         try {
             let response = await fetch(GAS_API_URL, {
                 method: 'POST',
-                body: JSON.stringify({ action: 'getSurveyData', payload: { survey_type: type, personal_id: localStorage.getItem("tms_personal_id") } })
+                body: JSON.stringify({ action: 'getSurveyData', payload: { survey_type: type, personal_id: getSessionPersonalId() } })
             });
             globalSurveyData = await response.json();
 
@@ -677,7 +690,7 @@ async function submitRealSurvey() {
             method: 'POST',
             body: JSON.stringify({
                 action: currentSurveyType === 'PROJECT_SURVEY' ? 'submitProjectEval' : 'submitSpeakerEval',
-                payload: { personal_id: localStorage.getItem("tms_personal_id"), answers: answers, target_id: target }
+                payload: { personal_id: getSessionPersonalId(), answers: answers, target_id: target }
             })
         });
 
@@ -704,7 +717,7 @@ async function openAssignmentForm() {
     tbody.innerHTML = `<tr><td colspan="5" class="text-center p-5"><div class="spinner-border text-dark"></div><p class="mt-2 text-muted">กำลังดึงข้อมูลภาระงาน...</p></td></tr>`;
 
     try {
-        let response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getAssignmentData', payload: { personal_id: localStorage.getItem("tms_personal_id") } }) });
+        let response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getAssignmentData', payload: { personal_id: getSessionPersonalId() } }) });
         let result = await response.json();
         if (result.status === 'success') { globalAssignmentData = result; renderAssignmentDashboard(); }
         else { tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-danger">${result.message}</td></tr>`; }
@@ -809,7 +822,7 @@ async function promptSubmitAssignment(assignId, subType, isLate) {
     const confirmSubmit = await Swal.fire({ icon: 'question', title: 'ยืนยันที่จะส่งงานนี้ใช่หรือไม่?', width: '600px', html: `<div class="text-start mt-2"><label class="fw-bold mb-2">ข้อมูลที่จะถูกส่งเข้าสู่ระบบ:</label>${previewDataHtml}</div>`, showCancelButton: true, confirmButtonText: 'ยืนยันการส่งงาน', confirmButtonColor: '#198754' });
 
     if (!confirmSubmit.isConfirmed) return;
-    let payload = { personal_id: localStorage.getItem("tms_personal_id"), assign_id: assignId, submission_type: subType, target_folder_id: asnConfig.target_folder_id, is_late: isLate };
+    let payload = { personal_id: getSessionPersonalId(), assign_id: assignId, submission_type: subType, target_folder_id: asnConfig.target_folder_id, is_late: isLate };
     if (subType === 'LINK') payload.file_link = linkToSubmit;
     executeAssignmentSubmit(payload, subType === 'LINK' ? null : fileToSubmit);
 }
@@ -836,7 +849,7 @@ async function cancelAssignment(assignId) {
     if (!confirm.isConfirmed) return;
     Swal.fire({ title: 'กำลังยกเลิก...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
     try {
-        let res = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'cancelAssignment', payload: { personal_id: localStorage.getItem("tms_personal_id"), assign_id: assignId } }) });
+        let res = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'cancelAssignment', payload: { personal_id: getSessionPersonalId(), assign_id: assignId } }) });
         let result = await res.json();
         if (result.status === 'success') { Swal.fire('ยกเลิกสำเร็จ', 'ท่านสามารถส่งงานชิ้นนี้ใหม่ได้อีกครั้ง', 'success'); openAssignmentForm(); }
         else { Swal.fire('ไม่สามารถยกเลิกได้', result.message, 'error'); }
