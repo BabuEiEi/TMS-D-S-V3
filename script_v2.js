@@ -265,6 +265,10 @@ function renderAttendanceButtons(schedule, userLogs) {
         let baseDisplay = "วันที่ " + slot.day_no + " | " + thaiDate + " " + timeRange;
 
         // 🌟 FIX: เติมเลข 0 ด้านหน้าเวลาให้ครบ 5 หลัก (เช่น 9:49 -> 09:49) ป้องกัน Invalid Date Error
+        let safeStartTime = slot.start_time.toString().trim();
+        if (safeStartTime.length < 5) safeStartTime = safeStartTime.padStart(5, '0');
+        let startDateTime = new Date(slot.date + "T" + safeStartTime + ":00");
+
         let safeEndTime = slot.end_time.toString().trim();
         if (safeEndTime.length < 5) safeEndTime = safeEndTime.padStart(5, '0');
         let endDateTime = new Date(slot.date + "T" + safeEndTime + ":00");
@@ -304,26 +308,45 @@ function renderAttendanceButtons(schedule, userLogs) {
             }
 
             btnContainer.innerHTML += `
-                <div class="card mb-3 p-4 bg-light border-0 rounded-4 text-center shadow-sm opacity-75">
-                    <div class="fw-bold text-secondary mb-2">✔️ ${slot.slot_label} บันทึกสำเร็จ</div>
-                    <div class="text-dark fw-semibold">${baseDisplay} | <span class="text-primary">${logTimeString}</span>${lateMark}</div>
-                </div>`;
+                <button class="btn btn-secondary w-100 mb-3 p-4 fw-bold rounded-4 shadow opacity-75" disabled>
+                    <span style="font-size: 1.2rem;">✔️ ${slot.slot_label} บันทึกสำเร็จแล้ว</span><br>
+                    <small class="fw-normal">${baseDisplay} | <span class="text-white">${logTimeString}</span>${lateMark}</small>
+                </button>`;
         } else {
+            let isBeforeStart = now < startDateTime;
             let isCurrentlyLate = now > endDateTime;
             let btnClass = isCurrentlyLate ? 'btn-warning text-dark' : 'btn-success text-white';
-            let statusSuffix = isCurrentlyLate ? ' (สาย)' : '';
+            let statusSuffix = isCurrentlyLate ? ' <span class="text-danger">(สาย)</span>' : '';
             let currentStatus = isCurrentlyLate ? 'สาย' : 'ตรงเวลา';
 
-            btnContainer.innerHTML += `
-                <button class="btn ${btnClass} w-100 mb-3 p-4 fw-bold rounded-4 shadow" onclick="submitRealAttendance('${slot.day_no}', '${slot.slot_id}', '${currentStatus}')">
-                    <span style="font-size: 1.2rem;">📌 ลงเวลา: ${slot.slot_label}${statusSuffix}</span><br>
-                    <small class="fw-normal">${baseDisplay}</small>
-                </button>`;
+            if (isBeforeStart) {
+                btnContainer.innerHTML += `
+                    <button class="btn btn-secondary w-100 mb-3 p-4 fw-bold rounded-4 shadow" disabled>
+                        <span style="font-size: 1.2rem;">⏳ ยังไม่ถึงเวลา: ${slot.slot_label}</span><br>
+                        <small class="fw-normal">${baseDisplay}</small>
+                    </button>`;
+            } else {
+                btnContainer.innerHTML += `
+                    <button class="btn ${btnClass} w-100 mb-3 p-4 fw-bold rounded-4 shadow" onclick="submitRealAttendance('${slot.day_no}', '${slot.slot_id}', '${currentStatus}', '${slot.date}', '${safeStartTime}')">
+                        <span style="font-size: 1.2rem;">📌 ลงเวลา: ${slot.slot_label}${statusSuffix}</span><br>
+                        <small class="fw-normal">${baseDisplay}</small>
+                    </button>`;
+            }
         }
     });
 }
 
-async function submitRealAttendance(day, slot, status) {
+async function submitRealAttendance(day, slot, status, slotDate, slotStartTime) {
+    if (slotDate && slotStartTime) {
+        const now = new Date();
+        const safeStartTime = slotStartTime.toString().trim().padStart(5, '0');
+        const startDateTime = new Date(slotDate + "T" + safeStartTime + ":00");
+        if (!isNaN(startDateTime.getTime()) && now < startDateTime) {
+            Swal.fire('ยังไม่ถึงเวลาลงเวลา', `รอบนี้เริ่มได้เวลา ${safeStartTime} น.`, 'warning');
+            return;
+        }
+    }
+
     const swalResult = await Swal.fire({ title: 'หมายเหตุการลงเวลา', input: 'text', inputPlaceholder: 'เช่น ลากิจ, ลาป่วย (เว้นว่างได้)', showCancelButton: true, confirmButtonText: 'บันทึกเวลา', cancelButtonText: 'ยกเลิก' });
     if (!swalResult.isConfirmed) return;
     let userNote = swalResult.value ? swalResult.value.trim() : "";
