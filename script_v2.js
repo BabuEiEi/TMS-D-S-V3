@@ -14,6 +14,7 @@ let selectedSpeakerId = null;
 let examCountdown = null;
 let isExamActive = false;
 let sessionPersonalId = '';
+const attendanceSubmitInFlight = new Set();
 
 function getSessionPersonalId() {
     if (sessionPersonalId) return sessionPersonalId;
@@ -350,6 +351,12 @@ function renderAttendanceButtons(schedule, userLogs) {
 }
 
 async function submitRealAttendance(day, slot, status, slotDate, slotStartTime) {
+    const submitKey = day + '_' + slot;
+    if (attendanceSubmitInFlight.has(submitKey)) {
+        Swal.fire('กำลังบันทึกอยู่', 'กรุณารอสักครู่ ระบบกำลังส่งข้อมูลรอบนี้', 'info');
+        return;
+    }
+
     if (slotDate && slotStartTime) {
         const now = new Date();
         const safeStartTime = slotStartTime.toString().trim().padStart(5, '0');
@@ -364,11 +371,21 @@ async function submitRealAttendance(day, slot, status, slotDate, slotStartTime) 
     if (!swalResult.isConfirmed) return;
     let userNote = swalResult.value ? swalResult.value.trim() : "";
     let finalNote = userNote !== "" ? "[" + status + "] " + userNote : "[" + status + "]";
+    attendanceSubmitInFlight.add(submitKey);
     Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
     try {
-        await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'submitAttendance', payload: { personal_id: getSessionPersonalId(), day_no: day, time_slot: slot, note: finalNote } }) });
+        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'submitAttendance', payload: { personal_id: getSessionPersonalId(), day_no: day, time_slot: slot, note: finalNote } }) });
+        const result = await response.json();
+        if (result.status !== 'success') {
+            Swal.fire('ผิดพลาด', result.message || 'ส่งข้อมูลไม่สำเร็จ', 'error');
+            return;
+        }
         openAttendanceForm(); Swal.close();
-    } catch (e) { Swal.fire('ผิดพลาด', 'ส่งข้อมูลไม่สำเร็จ', 'error'); }
+    } catch (e) {
+        Swal.fire('ผิดพลาด', 'ส่งข้อมูลไม่สำเร็จ', 'error');
+    } finally {
+        attendanceSubmitInFlight.delete(submitKey);
+    }
 }
 
 // ============================================================

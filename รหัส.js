@@ -5,7 +5,7 @@
  */
 
 const DB_SHARDS = {
-    'ATTENDANCE': '1qqX1SeI1gNGpjIig9fHBj9G2TLGFO0yqm5O_7lGHcPI', 
+    'ATTENDANCE': '1qqX1SeI1gNGpjIig9fHBj9G2TLGFO0yqm5O_7lGHcPI',
     'EXAM': '1G_vESzNSjbhQY6j1W-MiUU6N7XLmkeqmrmUohSMkyXQ',
     'PROJECT': '1pZzA-m9lMxf1pxd1tdKOb-EHTmheI75YFP8xEJoTs3g',
     'SPEAKER': '13scsBZAJQAVTOYkEaxgwu_HWuI7T5om_bVMy81a02fI',
@@ -17,113 +17,113 @@ function getThaiTime() {
 }
 
 function doPost(e) {
-  try {
-    var request = JSON.parse(e.postData.contents);
-    var action = request.action;
-    var payload = request.payload;
-    var result = { status: 'error', message: 'ไม่รู้จักคำสั่ง: ' + action };
+    try {
+        var request = JSON.parse(e.postData.contents);
+        var action = request.action;
+        var payload = request.payload;
+        var result = { status: 'error', message: 'ไม่รู้จักคำสั่ง: ' + action };
 
-    if (action === 'getUserProfile') { result = getUserProfile(payload.personal_id); } 
-    else if (action === 'searchUsers') { result = searchUsers(payload); }
-    else if (action === 'submitAttendance') { result = submitAttendance(payload); } 
-    else if (action === 'getExamData') { result = getExamData(payload.personal_id); } 
-    else if (action === 'submitExam') { result = submitExam(payload); }
-    else if (action === 'getSurveyData') { result = getSurveyData(payload); }
-    else if (action === 'submitProjectEval') { result = submitProjectEval(payload); }
-    else if (action === 'submitSpeakerEval') { result = submitSpeakerEval(payload); }
-    else if (action === 'getAssignmentData') { result = getAssignmentData(payload.personal_id); }
-    else if (action === 'submitAssignment') { result = submitAssignment(payload); }
-    else if (action === 'cancelAssignment') { result = cancelAssignment(payload); }
-    else if (action === 'getAttendanceData') { result = getAttendanceData(payload.personal_id); }
+        if (action === 'getUserProfile') { result = getUserProfile(payload.personal_id); }
+        else if (action === 'searchUsers') { result = searchUsers(payload); }
+        else if (action === 'submitAttendance') { result = submitAttendance(payload); }
+        else if (action === 'getExamData') { result = getExamData(payload.personal_id); }
+        else if (action === 'submitExam') { result = submitExam(payload); }
+        else if (action === 'getSurveyData') { result = getSurveyData(payload); }
+        else if (action === 'submitProjectEval') { result = submitProjectEval(payload); }
+        else if (action === 'submitSpeakerEval') { result = submitSpeakerEval(payload); }
+        else if (action === 'getAssignmentData') { result = getAssignmentData(payload.personal_id); }
+        else if (action === 'submitAssignment') { result = submitAssignment(payload); }
+        else if (action === 'cancelAssignment') { result = cancelAssignment(payload); }
+        else if (action === 'getAttendanceData') { result = getAttendanceData(payload.personal_id); }
 
-    // Mentor
-    else if (action === 'getMentorData') { result = getMentorData(payload.personal_id); }
-    else if (action === 'gradeAssignment') { result = gradeAssignment(payload); }
+        // Mentor
+        else if (action === 'getMentorData') { result = getMentorData(payload.personal_id); }
+        else if (action === 'gradeAssignment') { result = gradeAssignment(payload); }
 
-    // Admin
-    else if (action === 'getAdminConfigs') { result = getAdminConfigs(); } 
-    else if (action === 'updateConfigStatus') { result = updateConfigStatus(payload); }
-    else if (action === 'manageConfig') { result = manageConfig(payload); }
-    
-    // 🌟 API ดึงข้อมูล Dashboard ประเมินโครงการและวิทยากร
-    else if (action === 'getEvaluationDashboardData') { result = getEvaluationDashboardData(); }
-    
-    // 🌟 API ดึงข้อมูล Dashboard สถิติหลัก
-    else if (action === 'getDashboardReport') {
-      try {
-        var ss = SpreadsheetApp.getActiveSpreadsheet();
-        var getSheetData = function(sheetName) {
-          var sheet = ss.getSheetByName(sheetName);
-          if(!sheet) return [];
-          var data = sheet.getDataRange().getValues();
-          if(data.length <= 1) return [];
-          var headers = data.shift();
-          return data.map(function(row) {
-            var obj = {};
-            headers.forEach(function(h, i) { obj[h] = row[i]; });
-            return obj;
-          });
-        };
+        // Admin
+        else if (action === 'getAdminConfigs') { result = getAdminConfigs(); }
+        else if (action === 'updateConfigStatus') { result = updateConfigStatus(payload); }
+        else if (action === 'manageConfig') { result = manageConfig(payload); }
 
-        // ดึง Logs จาก DB ภายนอก (DB_SHARDS)
-        var getExternalData = function(shardKey, sheetName) {
-          try {
-            var extSs = SpreadsheetApp.openById(DB_SHARDS[shardKey]);
-            var sheet = sheetName ? extSs.getSheetByName(sheetName) : extSs.getSheets()[0];
-            if(!sheet) return [];
-            var data = sheet.getDataRange().getDisplayValues();
-            if(data.length <= 1) return [];
-            var headers = data.shift();
-            return data.map(function(row) {
-              var obj = {};
-              headers.forEach(function(h, i) { obj[h] = row[i]; });
-              return obj;
-            });
-          } catch(e) { return []; }
-        };
+        // 🌟 API ดึงข้อมูล Dashboard ประเมินโครงการและวิทยากร
+        else if (action === 'getEvaluationDashboardData') { result = getEvaluationDashboardData(); }
 
-        // ดึง attendance logs
-        var attendanceLogs = getExternalData('ATTENDANCE');
+        // 🌟 API ดึงข้อมูล Dashboard สถิติหลัก
+        else if (action === 'getDashboardReport') {
+            try {
+                var ss = SpreadsheetApp.getActiveSpreadsheet();
+                var getSheetData = function (sheetName) {
+                    var sheet = ss.getSheetByName(sheetName);
+                    if (!sheet) return [];
+                    var data = sheet.getDataRange().getValues();
+                    if (data.length <= 1) return [];
+                    var headers = data.shift();
+                    return data.map(function (row) {
+                        var obj = {};
+                        headers.forEach(function (h, i) { obj[h] = row[i]; });
+                        return obj;
+                    });
+                };
 
-        // ดึง exam logs จาก Test_Scores
-        var examLogs = getExternalData('EXAM', 'Test_Scores');
+                // ดึง Logs จาก DB ภายนอก (DB_SHARDS)
+                var getExternalData = function (shardKey, sheetName) {
+                    try {
+                        var extSs = SpreadsheetApp.openById(DB_SHARDS[shardKey]);
+                        var sheet = sheetName ? extSs.getSheetByName(sheetName) : extSs.getSheets()[0];
+                        if (!sheet) return [];
+                        var data = sheet.getDataRange().getDisplayValues();
+                        if (data.length <= 1) return [];
+                        var headers = data.shift();
+                        return data.map(function (row) {
+                            var obj = {};
+                            headers.forEach(function (h, i) { obj[h] = row[i]; });
+                            return obj;
+                        });
+                    } catch (e) { return []; }
+                };
 
-        // ดึง assignment logs จาก Assignment_Log
-        var assignmentLogs = getExternalData('ASSIGNMENT', 'Assignment_Log');
+                // ดึง attendance logs
+                var attendanceLogs = getExternalData('ATTENDANCE');
 
-        // ดึง survey logs (project + speaker)
-        var surveyLogs = [];
-        var projLogs = getExternalData('PROJECT');
-        projLogs.forEach(function(r) {
-          surveyLogs.push({ personal_id: r.personal_id || r[Object.keys(r)[1]], survey_type: 'PROJECT_SURVEY', speaker_id: '' });
-        });
-        var spkLogs = getExternalData('SPEAKER');
-        spkLogs.forEach(function(r) {
-          surveyLogs.push({ personal_id: r.personal_id || r[Object.keys(r)[1]], survey_type: 'SPEAKER_SURVEY', speaker_id: r.speaker_id || r.spk_id || r[Object.keys(r)[2]] || '' });
-        });
+                // ดึง exam logs จาก Test_Scores
+                var examLogs = getExternalData('EXAM', 'Test_Scores');
 
-        result = {
-          status: 'success',
-          users: getSheetData('Users'),
-          attendance: attendanceLogs,
-          exam: examLogs,
-          assignment: assignmentLogs,
-          survey: surveyLogs,
-          examConfig: getSheetData('Exam_Config'),
-          assignConfig: getSheetData('Assignment_Config'),
-          questions: getSheetData('Questions_Bank'),
-          speakers: getSheetData('Speakers_Config'),
-          attendanceConfig: getSheetData('Attendance_Config')
-        };
-      } catch (err) {
-        result = { status: 'error', message: err.toString() };
-      }
+                // ดึง assignment logs จาก Assignment_Log
+                var assignmentLogs = getExternalData('ASSIGNMENT', 'Assignment_Log');
+
+                // ดึง survey logs (project + speaker)
+                var surveyLogs = [];
+                var projLogs = getExternalData('PROJECT');
+                projLogs.forEach(function (r) {
+                    surveyLogs.push({ personal_id: r.personal_id || r[Object.keys(r)[1]], survey_type: 'PROJECT_SURVEY', speaker_id: '' });
+                });
+                var spkLogs = getExternalData('SPEAKER');
+                spkLogs.forEach(function (r) {
+                    surveyLogs.push({ personal_id: r.personal_id || r[Object.keys(r)[1]], survey_type: 'SPEAKER_SURVEY', speaker_id: r.speaker_id || r.spk_id || r[Object.keys(r)[2]] || '' });
+                });
+
+                result = {
+                    status: 'success',
+                    users: getSheetData('Users'),
+                    attendance: attendanceLogs,
+                    exam: examLogs,
+                    assignment: assignmentLogs,
+                    survey: surveyLogs,
+                    examConfig: getSheetData('Exam_Config'),
+                    assignConfig: getSheetData('Assignment_Config'),
+                    questions: getSheetData('Questions_Bank'),
+                    speakers: getSheetData('Speakers_Config'),
+                    attendanceConfig: getSheetData('Attendance_Config')
+                };
+            } catch (err) {
+                result = { status: 'error', message: err.toString() };
+            }
+        }
+
+        return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+    } catch (err) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Critical Error: ' + err.toString() })).setMimeType(ContentService.MimeType.JSON);
     }
-
-    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Critical Error: ' + err.toString() })).setMimeType(ContentService.MimeType.JSON);
-  }
 }
 
 function getDbMasterUsersContext() {
@@ -143,7 +143,7 @@ function getDbMasterUsersContext() {
 }
 
 function findHeaderIndex(headers, candidates, fallbackIndex) {
-    var normalizedHeaders = headers.map(function(header) {
+    var normalizedHeaders = headers.map(function (header) {
         return (header || '').toString().trim().toLowerCase();
     });
 
@@ -266,11 +266,11 @@ function getAttendanceData(personalId) {
     try {
         var masterSs = SpreadsheetApp.getActiveSpreadsheet();
         var configs = masterSs.getSheetByName('Attendance_Config').getDataRange().getDisplayValues();
-        
+
         // 🌟 เปลี่ยนมาใช้ getSheets()[0] เพื่อดึงชีตแรกสุดเสมอ ไม่ว่าพี่จะตั้งชื่อแท็บว่าอะไรก็ตาม!
         var logSheet = SpreadsheetApp.openById(DB_SHARDS['ATTENDANCE']).getSheets()[0];
         var logs = logSheet.getDataRange().getDisplayValues();
-        
+
         var userLogs = {};
         for (var i = 1; i < logs.length; i++) {
             if (logs[i][1] === personalId) {
@@ -280,18 +280,18 @@ function getAttendanceData(personalId) {
                 };
             }
         }
-        
+
         var schedule = [];
         for (var j = 1; j < configs.length; j++) {
             // 🌟 ป้องกันบั๊กค่าว่าง และลบช่องว่างส่วนเกินก่อนเช็คคำว่า TRUE
             if (configs[j][7] && configs[j][7].toString().trim().toUpperCase() === 'TRUE') {
-                schedule.push({ 
-                    day_no: configs[j][1], 
-                    date: configs[j][2], 
-                    slot_id: configs[j][3], 
-                    slot_label: configs[j][4], 
-                    start_time: configs[j][5], 
-                    end_time: configs[j][6] 
+                schedule.push({
+                    day_no: configs[j][1],
+                    date: configs[j][2],
+                    slot_id: configs[j][3],
+                    slot_label: configs[j][4],
+                    start_time: configs[j][5],
+                    end_time: configs[j][6]
                 });
             }
         }
@@ -302,13 +302,35 @@ function getAttendanceData(personalId) {
 }
 
 function submitAttendance(payload) {
+    var lock = LockService.getScriptLock();
     try {
+        lock.waitLock(5000);
+
+        if (!payload || !payload.personal_id || !payload.day_no || !payload.time_slot) {
+            return { status: 'error', message: 'ข้อมูลลงเวลาไม่ครบถ้วน' };
+        }
+
         // 🌟 เปลี่ยนมาใช้ getSheets()[0] เช่นเดียวกัน
         var logSheet = SpreadsheetApp.openById(DB_SHARDS['ATTENDANCE']).getSheets()[0];
+
+        // กันบันทึกซ้ำของคนเดิมในรอบเดิม (เช่น กดซ้ำ/เน็ตสะดุดแล้วรีทราย)
+        var logs = logSheet.getDataRange().getDisplayValues();
+        for (var i = logs.length - 1; i >= 1; i--) {
+            if (
+                logs[i][1] === payload.personal_id.toString() &&
+                logs[i][2].toString() === payload.day_no.toString() &&
+                logs[i][3].toString() === payload.time_slot.toString()
+            ) {
+                return { status: 'success', message: 'บันทึกเวลาแล้ว (ระบบกันรายการซ้ำ)' };
+            }
+        }
+
         logSheet.appendRow(["ATT-" + new Date().getTime(), payload.personal_id, payload.day_no, payload.time_slot, getThaiTime(), payload.note]);
         return { status: 'success', message: 'บันทึกเวลาสำเร็จ' };
     } catch (error) {
         return { status: 'error', message: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message };
+    } finally {
+        lock.releaseLock();
     }
 }
 
@@ -324,26 +346,26 @@ function getExamData(personalId) {
 
     for (var i = 1; i < configValues.length; i++) {
         var start = configValues[i][1] instanceof Date ? configValues[i][1] : new Date(configValues[i][1]);
-        var end   = configValues[i][2] instanceof Date ? configValues[i][2] : new Date(configValues[i][2]);
+        var end = configValues[i][2] instanceof Date ? configValues[i][2] : new Date(configValues[i][2]);
         var isActive = configDisplay[i][3] ? configDisplay[i][3].toString().trim().toUpperCase() === 'TRUE' : false;
         if (isActive && now >= start && now <= end) {
             activeExam = {
                 type: configDisplay[i][0],
                 start_datetime: Utilities.formatDate(start, "Asia/Bangkok", "dd/MM/yyyy HH:mm"),
-                end_datetime:   Utilities.formatDate(end,   "Asia/Bangkok", "dd/MM/yyyy HH:mm"),
+                end_datetime: Utilities.formatDate(end, "Asia/Bangkok", "dd/MM/yyyy HH:mm"),
                 passing_percent: parseFloat(configDisplay[i][4]) || 80
             };
             break;
         }
     }
     if (!activeExam) return { status: 'error', message: 'ยังไม่ถึงเวลาเปิดทำแบบทดสอบ หรือ หมดเวลาแล้วครับ' };
-    
+
     var scores = SpreadsheetApp.openById(DB_SHARDS['EXAM']).getSheetByName('Test_Scores').getDataRange().getDisplayValues();
     var attempts = 0, bestScore = 0;
     for (var j = 1; j < scores.length; j++) {
         if (scores[j][1] === personalId && scores[j][2] === activeExam.type) { attempts++; bestScore = Math.max(bestScore, parseInt(scores[j][3]) || 0); }
     }
-    
+
     var qbData = masterSs.getSheetByName('Questions_Bank').getDataRange().getDisplayValues();
     var questions = [];
     for (var k = 1; k < qbData.length; k++) {
@@ -360,17 +382,17 @@ function submitExam(payload) {
 }
 
 function getSurveyData(payload) {
-    var surveyType = payload.survey_type || ""; 
+    var surveyType = payload.survey_type || "";
     var personalId = payload.personal_id || "";
     var masterSs = SpreadsheetApp.getActiveSpreadsheet();
     var qData = masterSs.getSheetByName('Questions_Bank').getDataRange().getDisplayValues();
     var questions = [];
     for (var k = 1; k < qData.length; k++) {
         if (qData[k][1] && qData[k][1].toString().trim().toUpperCase() === surveyType.toUpperCase()) {
-            questions.push({ id: qData[k][0], category: qData[k][2], question: qData[k][3], options: [qData[k][4], qData[k][5], qData[k][6], qData[k][7], qData[k][8]].filter(function(e) { return e.trim() !== ""; }) });
+            questions.push({ id: qData[k][0], category: qData[k][2], question: qData[k][3], options: [qData[k][4], qData[k][5], qData[k][6], qData[k][7], qData[k][8]].filter(function (e) { return e.trim() !== ""; }) });
         }
     }
-  
+
     var speakers = [];
     if (surveyType.toUpperCase() === 'SPEAKER_SURVEY') {
         var evaluatedList = [];
@@ -378,18 +400,18 @@ function getSurveyData(payload) {
             // ดึงข้อมูลว่าประเมินใครไปแล้วบ้าง
             var evalLogs = SpreadsheetApp.openById(DB_SHARDS['SPEAKER']).getSheets()[0].getDataRange().getDisplayValues();
             for (var e = 1; e < evalLogs.length; e++) {
-                if (evalLogs[e][1] === personalId) evaluatedList.push(evalLogs[e][2].toString().trim()); 
+                if (evalLogs[e][1] === personalId) evaluatedList.push(evalLogs[e][2].toString().trim());
             }
         }
         var spkSheet = masterSs.getSheetByName('Speakers_Config');
-        var spkValues  = spkSheet.getDataRange().getValues();
+        var spkValues = spkSheet.getDataRange().getValues();
         var spkDisplay = spkSheet.getDataRange().getDisplayValues();
         var now = new Date();
         for (var s = 1; s < spkValues.length; s++) {
             if (!spkValues[s][3] || !spkValues[s][4]) continue;
             var isActive = spkDisplay[s][5] ? spkDisplay[s][5].toString().trim().toUpperCase() === 'TRUE' : false;
             var start = spkValues[s][3] instanceof Date ? spkValues[s][3] : new Date(spkValues[s][3]);
-            var end   = spkValues[s][4] instanceof Date ? spkValues[s][4] : new Date(spkValues[s][4]);
+            var end = spkValues[s][4] instanceof Date ? spkValues[s][4] : new Date(spkValues[s][4]);
             // แสดงเฉพาะ is_active=TRUE และอยู่ในช่วงเวลาที่กำหนด
             if (isActive && now >= start && now <= end) {
                 var spkId = spkDisplay[s][0].toString().trim();
@@ -419,8 +441,8 @@ function submitProjectEval(payload) {
     try {
         var ss = SpreadsheetApp.openById(DB_SHARDS['PROJECT']);
         // วิ่งหาชีตแรกสุดที่มีอยู่จริง ป้องกันบั๊ก getSheets()[0]
-        var sheet = ss.getSheets()[0]; 
-        
+        var sheet = ss.getSheets()[0];
+
         var logId = "PROJ-" + new Date().getTime();
         var personalId = payload.personal_id || "Unknown";
         var targetId = payload.target_id || "PROJECT";
@@ -430,7 +452,7 @@ function submitProjectEval(payload) {
         // เขียนข้อมูล 5 คอลัมน์ ให้ตรงกับหัวตารางใน CSV ของพี่เป๊ะๆ
         // log_id | personal_id | target_id | answers_json | timestamp
         sheet.appendRow([logId, personalId, targetId, answersJson, timestamp]);
-        
+
         return { status: 'success' };
     } catch (error) {
         return { status: 'error', message: 'DB_PROJECT Error: ' + error.message };
@@ -441,8 +463,8 @@ function submitSpeakerEval(payload) {
     try {
         var ss = SpreadsheetApp.openById(DB_SHARDS['SPEAKER']);
         // วิ่งหาชีตแรกสุดที่มีอยู่จริง ป้องกันบั๊ก getSheets()[0]
-        var sheet = ss.getSheets()[0]; 
-        
+        var sheet = ss.getSheets()[0];
+
         var logId = "SPK-" + new Date().getTime();
         var personalId = payload.personal_id || "Unknown";
         var targetId = payload.target_id || "Unknown_SPK";
@@ -452,7 +474,7 @@ function submitSpeakerEval(payload) {
         // เขียนข้อมูล 5 คอลัมน์ ให้ตรงกับหัวตารางใน CSV ของพี่เป๊ะๆ
         // log_id | personal_id | target_id | answers_json | timestamp
         sheet.appendRow([logId, personalId, targetId, answersJson, timestamp]);
-        
+
         return { status: 'success' };
     } catch (error) {
         return { status: 'error', message: 'DB_SPEAKER Error: ' + error.message };
@@ -473,8 +495,8 @@ function getAssignmentData(personalId) {
     for (var i = 1; i < configs.length; i++) {
         var isActive = configs[i][7] ? configs[i][7].toUpperCase() === 'TRUE' : false;
         if (isActive) {
-            var targetGroup = configs[i][8] ? configs[i][8].toString().trim().toUpperCase() : "ALL"; 
-            var targetArray = targetGroup.split(',').map(function(item) { return item.trim(); });
+            var targetGroup = configs[i][8] ? configs[i][8].toString().trim().toUpperCase() : "ALL";
+            var targetArray = targetGroup.split(',').map(function (item) { return item.trim(); });
             var isMatchGroup = (targetGroup === "ALL" || targetGroup === "" || targetArray.indexOf(userGroup) !== -1);
             if (isMatchGroup) { assignments.push({ assign_id: configs[i][0], title: configs[i][1], description: configs[i][2], submission_type: configs[i][3], target_folder_id: configs[i][4], start_datetime: configs[i][5], end_datetime: configs[i][6] }); }
         }
@@ -491,7 +513,7 @@ function submitAssignment(payload) {
     var assignSs = SpreadsheetApp.openById(DB_SHARDS['ASSIGNMENT']);
     var sheet = assignSs.getSheetByName('Assignment_Log');
     var rawTimestamp = new Date(); var logId = "ASN-" + rawTimestamp.getTime();
-    var finalLink = payload.submission_type === 'LINK' ? payload.file_link : ""; 
+    var finalLink = payload.submission_type === 'LINK' ? payload.file_link : "";
     if (payload.submission_type === 'FILE') {
         if (!payload.base64Data) return { status: 'error', message: 'ไฟล์ข้อมูลขาดหายระหว่างทาง' };
         try {
@@ -506,10 +528,10 @@ function submitAssignment(payload) {
             var newFileName = payload.personal_id + "_" + timeString + extension;
             var blob = Utilities.newBlob(Utilities.base64Decode(payload.base64Data), payload.mimeType || MimeType.PDF, newFileName);
             var file = targetFolder.createFile(blob);
-            finalLink = file.getUrl(); 
+            finalLink = file.getUrl();
         } catch (e) { return { status: 'error', message: 'Drive Error: ' + e.message }; }
     }
-    sheet.appendRow([ logId, payload.personal_id, payload.assign_id, payload.submission_type, finalLink, getThaiTime(), "รอตรวจ", "", "", payload.is_late ]);
+    sheet.appendRow([logId, payload.personal_id, payload.assign_id, payload.submission_type, finalLink, getThaiTime(), "รอตรวจ", "", "", payload.is_late]);
     return { status: 'success' };
 }
 
@@ -562,7 +584,7 @@ function getMentorData(personalId) {
         for (var k = 1; k < asmConfigRaw.length; k++) {
             if (asmConfigRaw[k][7] && asmConfigRaw[k][7].toString().toUpperCase() === 'TRUE') {
                 var rubric = [];
-                try { rubric = JSON.parse(asmConfigRaw[k][10] || '[]'); } catch(e) {}
+                try { rubric = JSON.parse(asmConfigRaw[k][10] || '[]'); } catch (e) { }
                 asmConfigs.push({
                     assign_id: asmConfigRaw[k][0], title: asmConfigRaw[k][1],
                     submission_type: asmConfigRaw[k][3], target_group: asmConfigRaw[k][8],
@@ -584,17 +606,17 @@ function getMentorData(personalId) {
         }
 
         // ดึง Eval status (Project + Speaker) สำหรับ Trainee ในกลุ่ม
-        var traineeIds = trainees.map(function(t) { return t.personal_id; });
-        var getExtSheet = function(shardKey) {
+        var traineeIds = trainees.map(function (t) { return t.personal_id; });
+        var getExtSheet = function (shardKey) {
             try {
                 var rows = SpreadsheetApp.openById(DB_SHARDS[shardKey]).getSheets()[0].getDataRange().getDisplayValues();
                 if (rows.length <= 1) return [];
                 var h = rows[0]; var result = [];
                 for (var r = 1; r < rows.length; r++) {
-                    var obj = {}; h.forEach(function(hh, ii) { obj[hh] = rows[r][ii]; }); result.push(obj);
+                    var obj = {}; h.forEach(function (hh, ii) { obj[hh] = rows[r][ii]; }); result.push(obj);
                 }
                 return result;
-            } catch(e) { return []; }
+            } catch (e) { return []; }
         };
         var projectLogs = getExtSheet('PROJECT');
         var speakerLogs = getExtSheet('SPEAKER');
@@ -605,7 +627,7 @@ function getMentorData(personalId) {
         var attConfigs = [];
         var attHeaders = attConfigRaw[0];
         for (var ac = 1; ac < attConfigRaw.length; ac++) {
-            var obj = {}; attHeaders.forEach(function(h, hi) { obj[h] = attConfigRaw[ac][hi]; });
+            var obj = {}; attHeaders.forEach(function (h, hi) { obj[h] = attConfigRaw[ac][hi]; });
             attConfigs.push(obj);
         }
         var attLogSheet = SpreadsheetApp.openById(DB_SHARDS['ATTENDANCE']).getSheets()[0];
@@ -614,7 +636,7 @@ function getMentorData(personalId) {
         if (attLogRaw.length > 1) {
             var attLogHeaders = attLogRaw[0];
             for (var al = 1; al < attLogRaw.length; al++) {
-                var aobj = {}; attLogHeaders.forEach(function(h, hi) { aobj[h] = attLogRaw[al][hi]; });
+                var aobj = {}; attLogHeaders.forEach(function (h, hi) { aobj[h] = attLogRaw[al][hi]; });
                 attLogs.push(aobj);
             }
         }
@@ -631,7 +653,7 @@ function getMentorData(personalId) {
             attendanceConfig: attConfigs,
             attendance: attLogs
         };
-    } catch(e) {
+    } catch (e) {
         return { status: 'error', message: 'getMentorData Error: ' + e.message };
     }
 }
@@ -650,7 +672,7 @@ function gradeAssignment(payload) {
             }
         }
         return { status: 'error', message: 'ไม่พบ log_id: ' + payload.log_id };
-    } catch(e) {
+    } catch (e) {
         return { status: 'error', message: 'gradeAssignment Error: ' + e.message };
     }
 }
@@ -659,43 +681,43 @@ function getAdminConfigs() { return { status: 'error', message: 'Not needed' }; 
 function updateConfigStatus(payload) { return { status: 'error', message: 'Not needed' }; }
 
 function manageConfig(payload) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var action = payload.action; 
-  var sheetName = payload.sheetName; 
-  var sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return { status: 'error', message: 'ไม่พบชีต: ' + sheetName };
-  var data = sheet.getDataRange().getDisplayValues();
-  var headers = data[0];
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var action = payload.action;
+    var sheetName = payload.sheetName;
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return { status: 'error', message: 'ไม่พบชีต: ' + sheetName };
+    var data = sheet.getDataRange().getDisplayValues();
+    var headers = data[0];
 
-  if (action === "GET") { return { status: 'success', headers: headers, rows: data.slice(1) }; }
-  else if (action === "SAVE") {
-    var rowData = payload.rowData; var isNew = payload.isNew;
-    if (isNew) { sheet.appendRow(rowData); } else {
-      var id = rowData[0].toString().trim(); var found = false;
-      for (var i = 1; i < data.length; i++) {
-        if (data[i][0].toString().trim() === id) { sheet.getRange(i + 1, 1, 1, rowData.length).setValues([rowData]); found = true; break; }
-      }
-      if (!found) return { status: 'error', message: 'ไม่พบรหัสที่ต้องการแก้ไข' };
+    if (action === "GET") { return { status: 'success', headers: headers, rows: data.slice(1) }; }
+    else if (action === "SAVE") {
+        var rowData = payload.rowData; var isNew = payload.isNew;
+        if (isNew) { sheet.appendRow(rowData); } else {
+            var id = rowData[0].toString().trim(); var found = false;
+            for (var i = 1; i < data.length; i++) {
+                if (data[i][0].toString().trim() === id) { sheet.getRange(i + 1, 1, 1, rowData.length).setValues([rowData]); found = true; break; }
+            }
+            if (!found) return { status: 'error', message: 'ไม่พบรหัสที่ต้องการแก้ไข' };
+        }
+        return { status: 'success', message: 'บันทึกข้อมูลเรียบร้อย' };
     }
-    return { status: 'success', message: 'บันทึกข้อมูลเรียบร้อย' };
-  }
-  else if (action === "DELETE") {
-    var id = payload.id.toString().trim();
-    for (var j = 1; j < data.length; j++) {
-      if (data[j][0].toString().trim() === id) { sheet.deleteRow(j + 1); return { status: 'success', message: 'ลบข้อมูลเรียบร้อย' }; }
+    else if (action === "DELETE") {
+        var id = payload.id.toString().trim();
+        for (var j = 1; j < data.length; j++) {
+            if (data[j][0].toString().trim() === id) { sheet.deleteRow(j + 1); return { status: 'success', message: 'ลบข้อมูลเรียบร้อย' }; }
+        }
+        return { status: 'error', message: 'ไม่พบข้อมูล' };
     }
-    return { status: 'error', message: 'ไม่พบข้อมูล' };
-  }
-  else if (action === "IMPORT_EXCEL") {
-      var excelData = payload.excelData;
-      if (!excelData || excelData.length === 0) return { status: 'error', message: 'ไม่มีข้อมูล' };
-      var lastRow = sheet.getLastRow(); var lastCol = sheet.getLastColumn();
-      if (lastRow > 1) { sheet.getRange(2, 1, lastRow - 1, lastCol).clearContent(); }
-      var cleanData = excelData.map(function(row) { var newRow = []; for(var i=0; i<lastCol; i++) { newRow.push(row[i] !== undefined ? row[i] : ""); } return newRow; });
-      sheet.getRange(2, 1, cleanData.length, lastCol).setValues(cleanData);
-      return { status: 'success', message: 'นำเข้าเรียบร้อย' };
-  }
-  return { status: 'error', message: 'คำสั่งผิดพลาด' };
+    else if (action === "IMPORT_EXCEL") {
+        var excelData = payload.excelData;
+        if (!excelData || excelData.length === 0) return { status: 'error', message: 'ไม่มีข้อมูล' };
+        var lastRow = sheet.getLastRow(); var lastCol = sheet.getLastColumn();
+        if (lastRow > 1) { sheet.getRange(2, 1, lastRow - 1, lastCol).clearContent(); }
+        var cleanData = excelData.map(function (row) { var newRow = []; for (var i = 0; i < lastCol; i++) { newRow.push(row[i] !== undefined ? row[i] : ""); } return newRow; });
+        sheet.getRange(2, 1, cleanData.length, lastCol).setValues(cleanData);
+        return { status: 'success', message: 'นำเข้าเรียบร้อย' };
+    }
+    return { status: 'error', message: 'คำสั่งผิดพลาด' };
 }
 
 // ============================================================
@@ -703,11 +725,11 @@ function manageConfig(payload) {
 // ============================================================
 function getEvaluationDashboardData() {
     var masterSs = SpreadsheetApp.getActiveSpreadsheet();
-    
+
     // 1. ดึงวิทยากรทั้งหมด
     var spkSheet = masterSs.getSheetByName('Speakers_Config');
     var speakers = [];
-    if(spkSheet) {
+    if (spkSheet) {
         var spkData = spkSheet.getDataRange().getDisplayValues();
         for (var i = 1; i < spkData.length; i++) {
             if (spkData[i][0]) { speakers.push({ id: spkData[i][0], name: spkData[i][1], topic: spkData[i][2] }); }
@@ -717,19 +739,19 @@ function getEvaluationDashboardData() {
     // 2. ดึงคำถามและกำหนดประเภทคำถามให้แม่นยำ
     var qbSheet = masterSs.getSheetByName('Questions_Bank');
     var questions = {};
-    if(qbSheet) {
+    if (qbSheet) {
         var qbData = qbSheet.getDataRange().getDisplayValues();
         for (var j = 1; j < qbData.length; j++) {
             var type = qbData[j][1];
             if (type === 'PROJECT_SURVEY' || type === 'SPEAKER_SURVEY') {
                 var oA = qbData[j][4], oB = qbData[j][5], oC = qbData[j][6], oD = qbData[j][7], oE = qbData[j][8];
                 var rawOpts = [oA, oB, oC, oD, oE];
-                var cleanOpts = rawOpts.filter(function(e) { return e && e !== 'TEXT'; });
-                
+                var cleanOpts = rawOpts.filter(function (e) { return e && e !== 'TEXT'; });
+
                 var inType = 'CHOICE';
-                if (oA === 'TEXT') { inType = 'TEXT'; } 
-                else if (cleanOpts.length > 0 && cleanOpts.every(function(o) { return !isNaN(o); })) { inType = 'RATING'; }
-                
+                if (oA === 'TEXT') { inType = 'TEXT'; }
+                else if (cleanOpts.length > 0 && cleanOpts.every(function (o) { return !isNaN(o); })) { inType = 'RATING'; }
+
                 questions[qbData[j][0]] = {
                     type: type, category: qbData[j][2], text: qbData[j][3],
                     inputType: inType, options: cleanOpts
@@ -739,15 +761,15 @@ function getEvaluationDashboardData() {
     }
 
     var surveys = [];
-    
+
     // 🌟 ฟังก์ชันนักสืบ: ตรวจจับหาคอลัมน์ที่เป็น JSON
-    var findJsonData = function(row) {
+    var findJsonData = function (row) {
         for (var c = 2; c < row.length; c++) {
             if (row[c] && row[c].toString().trim().charAt(0) === '{') {
                 return row[c].toString().trim();
             }
         }
-        return "{}"; 
+        return "{}";
     };
 
     // 3. ดึง Log ประเมินโครงการ
@@ -759,7 +781,7 @@ function getEvaluationDashboardData() {
                 surveys.push({ logId: projData[p][0], personalId: projData[p][1], targetId: 'PROJECT', answers: findJsonData(projData[p]) });
             }
         }
-    } catch(e) {} 
+    } catch (e) { }
 
     // 4. ดึง Log ประเมินวิทยากร
     try {
@@ -770,7 +792,7 @@ function getEvaluationDashboardData() {
                 surveys.push({ logId: spkLogData[s][0], personalId: spkLogData[s][1], targetId: spkLogData[s][2], answers: findJsonData(spkLogData[s]) });
             }
         }
-    } catch(e) {} 
+    } catch (e) { }
 
     return { status: 'success', speakers: speakers, questions: questions, surveys: surveys };
 }
