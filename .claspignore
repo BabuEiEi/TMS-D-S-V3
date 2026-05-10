@@ -1,0 +1,7 @@
+**/*.html
+node_modules/**
+.vscode/**
+script_v2.js
+README.md
+package.json
+package-lock.json
