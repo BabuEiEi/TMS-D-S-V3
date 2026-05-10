@@ -265,6 +265,7 @@ function renderAttendanceButtons(schedule, userLogs) {
     let btnContainer = document.getElementById("attendanceButtonsContainer");
     btnContainer.innerHTML = '';
     const now = new Date();
+    const consumedLogKeys = new Set();
 
     if (!schedule || schedule.length === 0) {
         btnContainer.innerHTML = `<div class="alert alert-info text-center shadow-sm rounded-4 py-4">ยังไม่มีรอบลงเวลาที่เปิดใช้งานในขณะนี้ครับ</div>`;
@@ -274,6 +275,7 @@ function renderAttendanceButtons(schedule, userLogs) {
     schedule.forEach(slot => {
         let key = slot.day_no + '_' + slot.slot_id;
         let loggedData = userLogs[key];
+        let canUseLogForThisSlot = !!loggedData && !consumedLogKeys.has(key);
         let thaiDate = formatThaiDate(slot.date);
         let timeRange = "(" + slot.start_time + " - " + slot.end_time + ")";
         let baseDisplay = "วันที่ " + slot.day_no + " | " + thaiDate + " " + timeRange;
@@ -287,7 +289,8 @@ function renderAttendanceButtons(schedule, userLogs) {
         if (safeEndTime.length < 5) safeEndTime = safeEndTime.padStart(5, '0');
         let endDateTime = new Date(slot.date + "T" + safeEndTime + ":00");
 
-        if (loggedData) {
+        if (canUseLogForThisSlot) {
+            consumedLogKeys.add(key);
             // รองรับทั้ง format เก่า (string) และใหม่ (object {timestamp, note})
             const tsRaw = typeof loggedData === 'object' ? loggedData.timestamp : loggedData;
             const noteRaw = typeof loggedData === 'object' ? (loggedData.note || '') : '';
