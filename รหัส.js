@@ -182,7 +182,8 @@ function findUserProfileInRows(rows, personalId) {
                     name: rows[i][1] || '',
                     role: rows[i][2] || '',
                     area_service: rows[i][3] || '',
-                    group_target: rows[i][5] || ''
+                    group_target: rows[i][5] || '',
+                    menu_link: rows[i][8] || ''
                 }
             };
         }

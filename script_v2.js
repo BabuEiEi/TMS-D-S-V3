@@ -5,6 +5,7 @@
  */
 
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyv-YdeoBNXojhXO6x-sgs2GInQBLrFly0Spz7lJrcuYBGC5smGY3UD06flyOzoRN4v9w/exec';
+const ROLE_MENU_FALLBACK_URL = 'https://script.google.com/macros/s/AKfycbwB9FJRJfg4JBWSGMm7yRiDzqB1e_1CkLsB7rtOVcJW7eHRZiDKPeCagz3C46yyocRNgw/exec';
 
 let globalExamData = null;
 let globalSurveyData = null;
@@ -215,6 +216,68 @@ function logout() {
     localStorage.removeItem("tms_personal_id");
     location.reload();
 }
+
+function getCurrentUserData() {
+    try {
+        return JSON.parse(localStorage.getItem("tms_user_data") || '{}');
+    } catch (e) {
+        return {};
+    }
+}
+
+function sanitizeRoleMenuUrl(rawUrl) {
+    const value = (rawUrl || '').toString().trim();
+    if (!value) return '';
+    try {
+        const url = new URL(value);
+        return (url.protocol === 'https:' || url.protocol === 'http:') ? url.href : '';
+    } catch (e) {
+        return '';
+    }
+}
+
+function openRoleMenuIframe(source) {
+    const user = getCurrentUserData();
+    const role = (user.role || '').toString().trim().toUpperCase();
+    if (!['ADMIN', 'STAFF', 'MENTOR'].includes(role)) {
+        Swal.fire({ icon: 'info', title: 'ไม่รองรับเมนูนี้', text: 'เมนูนี้ใช้ได้เฉพาะ Admin, Staff และ Mentor' });
+        return;
+    }
+
+    const sheetUrl = sanitizeRoleMenuUrl(user.menu_link);
+    const directUrl = sanitizeRoleMenuUrl(ROLE_MENU_FALLBACK_URL);
+    const url = source === 'sheet' ? (sheetUrl || directUrl) : directUrl;
+
+    if (!url) {
+        Swal.fire({ icon: 'error', title: 'ไม่พบลิงก์', text: 'ไม่พบ URL สำหรับเปิดเมนู' });
+        return;
+    }
+
+    const modalEl = document.getElementById('roleMenuModal');
+    const iframeEl = document.getElementById('roleMenuIframe');
+    const linkEl = document.getElementById('roleMenuExternalLink');
+    const sourceEl = document.getElementById('roleMenuSourceLabel');
+    const titleEl = document.getElementById('roleMenuTitle');
+
+    if (titleEl) titleEl.textContent = source === 'sheet' ? 'เมนูจากชีต Users' : 'เมนูลิงก์ตรง';
+    if (sourceEl) {
+        sourceEl.textContent = source === 'sheet'
+            ? (sheetUrl ? 'ที่มา: Users column I' : 'ที่มา: Users column I (ว่าง จึงใช้ลิงก์ตรงสำรอง)')
+            : 'ที่มา: ลิงก์ตรง';
+    }
+    if (iframeEl) iframeEl.src = url;
+    if (linkEl) linkEl.href = url;
+
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
+
+window.openRoleMenuFromSheet = function () {
+    openRoleMenuIframe('sheet');
+};
+
+window.openRoleMenuDirect = function () {
+    openRoleMenuIframe('direct');
+};
 
 function showDashboard() {
     document.getElementById("loginSection").classList.add("d-none");
@@ -1461,7 +1524,13 @@ async function loadAdminConfig(sheetName) {
     try {
         let res = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'manageConfig', payload: { action: 'GET', sheetName: sheetName } }) });
         let result = await res.json();
-        if (result.status === 'success') { adminConfigHeaders = CUSTOM_HEADERS[sheetName] || result.headers; adminConfigRows = result.rows; renderAdminTable(containerId); }
+        if (result.status === 'success') {
+            adminConfigHeaders = sheetName === 'Users'
+                ? (result.headers && result.headers.length ? result.headers : CUSTOM_HEADERS[sheetName])
+                : (CUSTOM_HEADERS[sheetName] || result.headers);
+            adminConfigRows = result.rows;
+            renderAdminTable(containerId);
+        }
         else { container.innerHTML = `<div class="alert alert-danger text-center">${result.message}</div>`; }
     } catch (e) { container.innerHTML = `<div class="alert alert-danger text-center">การเชื่อมต่อขัดข้อง</div>`; }
 }
@@ -1470,7 +1539,6 @@ function renderAdminTable(targetId = "configTableContainer") {
     let html = '<div class="table-responsive bg-white rounded-3"><table class="table table-hover align-middle small text-nowrap mb-0"><thead class="table-light"><tr>';
     adminConfigHeaders.forEach((h, i) => {
         if (adminCurrentConfigSheet === 'Assignment_Config' && i === 10) return;
-        if (adminCurrentConfigSheet === 'Users' && i >= 6) return;
         html += `<th>${h}</th>`;
     });
     html += '<th class="text-center border-start bg-light" style="position: sticky; right: 0; z-index: 2;">จัดการ</th></tr></thead><tbody>';
@@ -1478,14 +1546,12 @@ function renderAdminTable(targetId = "configTableContainer") {
     if (adminConfigRows.length === 0) {
         let colSpan = adminConfigHeaders.length + 1;
         if (adminCurrentConfigSheet === 'Assignment_Config') colSpan -= 1;
-        if (adminCurrentConfigSheet === 'Users') colSpan = 7;
         html += `<tr><td colspan="${colSpan}" class="text-center py-5 text-muted">ยังไม่มีข้อมูลในระบบ</td></tr>`;
     } else {
         adminConfigRows.forEach(row => {
             html += '<tr>';
             row.forEach((cell, i) => {
                 if (adminCurrentConfigSheet === 'Assignment_Config' && i === 10) return;
-                if (adminCurrentConfigSheet === 'Users' && i >= 6) return;
                 // Strip HTML tags (e.g. from Quill editor) before displaying in table
                 let plainCell = cell.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
                 let displayCell = plainCell.length > 30 ? plainCell.substring(0, 30) + '...' : plainCell;
@@ -1502,8 +1568,8 @@ function filterUserTable() {
     let keyword = document.getElementById('userSearchInput').value.trim().toLowerCase();
     if (!keyword) { renderAdminTable('userTableContainer'); return; }
     let filtered = adminConfigRows.filter(row => {
-        // Search in personal_id(0), name(1), Area_Service(3), group_target(5)
-        return [0, 1, 3, 5].some(i => row[i] && String(row[i]).toLowerCase().includes(keyword));
+        // Search in personal_id(0), name(1), Area_Service(3), group_target(5), menu_link(8)
+        return [0, 1, 3, 5, 8].some(i => row[i] && String(row[i]).toLowerCase().includes(keyword));
     });
     let backup = adminConfigRows;
     adminConfigRows = filtered;
