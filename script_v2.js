@@ -236,6 +236,15 @@ function sanitizeRoleMenuUrl(rawUrl) {
     }
 }
 
+function isIframeBlockedHost(url) {
+    try {
+        const host = new URL(url).hostname.toLowerCase();
+        return host === 'script.google.com' || host.endsWith('.script.google.com') || host === 'docs.google.com' || host.endsWith('.docs.google.com');
+    } catch (e) {
+        return false;
+    }
+}
+
 function openRoleMenuIframe(source) {
     const user = getCurrentUserData();
     const role = (user.role || '').toString().trim().toUpperCase();
@@ -250,6 +259,17 @@ function openRoleMenuIframe(source) {
 
     if (!url) {
         Swal.fire({ icon: 'error', title: 'ไม่พบลิงก์', text: 'ไม่พบ URL สำหรับเปิดเมนู' });
+        return;
+    }
+
+    // Google-hosted pages are commonly blocked from iframe embedding.
+    if (isIframeBlockedHost(url)) {
+        Swal.fire({
+            icon: 'info',
+            title: 'ปลายทางไม่อนุญาต iframe',
+            text: 'ลิงก์นี้ถูกนโยบายปลายทางบล็อกการฝังหน้าเว็บ ระบบจะเปิดในแท็บใหม่ให้แทน'
+        });
+        window.open(url, '_blank', 'noopener,noreferrer');
         return;
     }
 
