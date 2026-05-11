@@ -12,6 +12,12 @@ const DB_SHARDS = {
     'ASSIGNMENT': '1rNxPcTnlG6TqaAW307lXe6DYgfKDvt0bWyQdF2UiQlE'
 };
 
+const USER_SEARCH_CONFIG = {
+    MASTER_DB_ID: '1CUzITlykPgHPASLCDjznpiEB0m9XSHrB3cHbmXXrM4Y',
+    SHEET_NAME: 'Users',
+    HEADER_ROW: 35
+};
+
 function getThaiTime() {
     return Utilities.formatDate(new Date(), "Asia/Bangkok", "dd/MM/yyyy HH:mm:ss");
 }
@@ -131,18 +137,19 @@ function doPost(e) {
 }
 
 function getDbMasterUsersContext() {
-    var masterDbId = '10wAzcOmhlFaizhys6Wn4FeJ3quenLyNj25pYSj0x8YQ';
-    var sheet = SpreadsheetApp.openById(masterDbId).getSheetByName('Users');
+    var sheet = SpreadsheetApp.openById(USER_SEARCH_CONFIG.MASTER_DB_ID).getSheetByName(USER_SEARCH_CONFIG.SHEET_NAME);
     var lastRow = sheet.getLastRow();
     var lastColumn = sheet.getLastColumn();
+    var headerRow = USER_SEARCH_CONFIG.HEADER_ROW;
+    var dataStartRow = headerRow + 1;
 
-    if (lastRow < 30) {
+    if (lastRow < headerRow) {
         return { headers: [], rows: [] };
     }
 
-    var headers = sheet.getRange(30, 1, 1, lastColumn).getDisplayValues()[0];
-    var dataRowCount = Math.max(lastRow - 30, 0);
-    var rows = dataRowCount > 0 ? sheet.getRange(31, 1, dataRowCount, lastColumn).getDisplayValues() : [];
+    var headers = sheet.getRange(headerRow, 1, 1, lastColumn).getDisplayValues()[0];
+    var dataRowCount = Math.max(lastRow - headerRow, 0);
+    var rows = dataRowCount > 0 ? sheet.getRange(dataStartRow, 1, dataRowCount, lastColumn).getDisplayValues() : [];
     return { headers: headers, rows: rows };
 }
 
@@ -185,8 +192,7 @@ function findUserProfileInRows(rows, personalId) {
 }
 
 function getUserProfile(personalId) {
-    var masterDbId = '1CUzITlykPgHPASLCDjznpiEB0m9XSHrB3cHbmXXrM4Y';
-    var masterSheet = SpreadsheetApp.openById(masterDbId).getSheetByName('Users');
+    var masterSheet = SpreadsheetApp.openById(USER_SEARCH_CONFIG.MASTER_DB_ID).getSheetByName(USER_SEARCH_CONFIG.SHEET_NAME);
     var masterData = masterSheet.getDataRange().getDisplayValues();
     var foundUser = findUserProfileInRows(masterData, personalId);
     if (foundUser) {
