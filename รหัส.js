@@ -575,11 +575,12 @@ function getMentorData(personalId) {
         var ss = SpreadsheetApp.getActiveSpreadsheet();
         var usersData = ss.getSheetByName('Users').getDataRange().getDisplayValues();
         var usersHeaders = usersData[0];
+        var normalizedPersonalId = normalizePersonalId(personalId);
 
         // หา group_target ของ Mentor นี้
         var mentorGroup = '';
         for (var i = 1; i < usersData.length; i++) {
-            if (usersData[i][0].toString().trim() === personalId.toString().trim()) {
+            if (normalizePersonalId(usersData[i][0]) === normalizedPersonalId) {
                 mentorGroup = usersData[i][5].toString().trim(); // col 5 = group_target
                 break;
             }
@@ -589,7 +590,7 @@ function getMentorData(personalId) {
         // ดึง Trainee ทุกคนที่มี group_target ตรงกัน
         var trainees = [];
         for (var j = 1; j < usersData.length; j++) {
-            if (usersData[j][2].toString().toUpperCase() === 'TRAINEE' && usersData[j][5].toString().trim() === mentorGroup) {
+            if (normalizePersonalId(usersData[j][2]) === 'TRAINEE' && usersData[j][5].toString().trim() === mentorGroup) {
                 trainees.push({
                     personal_id: usersData[j][0], name: usersData[j][1],
                     area_service: usersData[j][3], cluster: usersData[j][4], group_target: usersData[j][5]
