@@ -16,9 +16,13 @@ let isExamActive = false;
 let sessionPersonalId = '';
 const attendanceSubmitInFlight = new Set();
 
+function normalizePersonalId(value) {
+    return (value || '').toString().replace(/\s+/g, '').toUpperCase();
+}
+
 function getSessionPersonalId() {
     if (sessionPersonalId) return sessionPersonalId;
-    sessionPersonalId = localStorage.getItem("tms_personal_id") || '';
+    sessionPersonalId = normalizePersonalId(localStorage.getItem("tms_personal_id") || '');
     return sessionPersonalId;
 }
 
@@ -52,7 +56,8 @@ function renderUserInfo() {
 
 async function login() {
     let idInput = document.getElementById("personalId");
-    let id = idInput.value.trim();
+    let id = normalizePersonalId(idInput.value);
+    idInput.value = id;
     if (id === "") { Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกรหัสประจำตัวก่อนครับ' }); return; }
     Swal.fire({ title: 'กำลังตรวจสอบข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
     try {
@@ -123,7 +128,7 @@ function bindUserSearchPopupEvents() {
             button.addEventListener('click', () => {
                 const personalIdInput = document.getElementById('personalId');
                 if (personalIdInput) {
-                    personalIdInput.value = button.dataset.personalId || '';
+                    personalIdInput.value = normalizePersonalId(button.dataset.personalId || '');
                     personalIdInput.focus();
                 }
                 Swal.close();

@@ -16,6 +16,10 @@ function getThaiTime() {
     return Utilities.formatDate(new Date(), "Asia/Bangkok", "dd/MM/yyyy HH:mm:ss");
 }
 
+function normalizePersonalId(value) {
+    return (value || '').toString().replace(/\s+/g, '').toUpperCase();
+}
+
 function doPost(e) {
     try {
         var request = JSON.parse(e.postData.contents);
@@ -160,10 +164,10 @@ function findHeaderIndex(headers, candidates, fallbackIndex) {
 }
 
 function findUserProfileInRows(rows, personalId) {
-    var searchId = personalId.toString().trim().toLowerCase();
+    var searchId = normalizePersonalId(personalId);
 
     for (var i = 0; i < rows.length; i++) {
-        var rowId = (rows[i][0] || '').toString().trim().toLowerCase();
+        var rowId = normalizePersonalId(rows[i][0] || '');
         if (rowId === searchId) {
             return {
                 status: 'success',
@@ -264,6 +268,7 @@ function searchUsers(payload) {
 // ============================================================
 function getAttendanceData(personalId) {
     try {
+        var normalizedPersonalId = normalizePersonalId(personalId);
         var masterSs = SpreadsheetApp.getActiveSpreadsheet();
         var configs = masterSs.getSheetByName('Attendance_Config').getDataRange().getDisplayValues();
 
@@ -273,7 +278,7 @@ function getAttendanceData(personalId) {
 
         var userLogs = {};
         for (var i = 1; i < logs.length; i++) {
-            if (logs[i][1] === personalId) {
+            if (normalizePersonalId(logs[i][1]) === normalizedPersonalId) {
                 userLogs[logs[i][2] + '_' + logs[i][3]] = {
                     timestamp: logs[i][4],
                     note: logs[i][5] || ''
@@ -310,6 +315,8 @@ function submitAttendance(payload) {
             return { status: 'error', message: 'ข้อมูลลงเวลาไม่ครบถ้วน' };
         }
 
+        var normalizedPersonalId = normalizePersonalId(payload.personal_id);
+
         // 🌟 เปลี่ยนมาใช้ getSheets()[0] เช่นเดียวกัน
         var logSheet = SpreadsheetApp.openById(DB_SHARDS['ATTENDANCE']).getSheets()[0];
 
@@ -317,7 +324,7 @@ function submitAttendance(payload) {
         var logs = logSheet.getDataRange().getDisplayValues();
         for (var i = logs.length - 1; i >= 1; i--) {
             if (
-                logs[i][1] === payload.personal_id.toString() &&
+                normalizePersonalId(logs[i][1]) === normalizedPersonalId &&
                 logs[i][2].toString() === payload.day_no.toString() &&
                 logs[i][3].toString() === payload.time_slot.toString()
             ) {
@@ -325,7 +332,7 @@ function submitAttendance(payload) {
             }
         }
 
-        logSheet.appendRow(["ATT-" + new Date().getTime(), payload.personal_id, payload.day_no, payload.time_slot, getThaiTime(), payload.note]);
+        logSheet.appendRow(["ATT-" + new Date().getTime(), normalizedPersonalId, payload.day_no, payload.time_slot, getThaiTime(), payload.note]);
         return { status: 'success', message: 'บันทึกเวลาสำเร็จ' };
     } catch (error) {
         return { status: 'error', message: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message };
@@ -335,6 +342,7 @@ function submitAttendance(payload) {
 }
 
 function getExamData(personalId) {
+    var normalizedPersonalId = normalizePersonalId(personalId);
     var masterSs = SpreadsheetApp.getActiveSpreadsheet();
     // ใช้ getValues() เพื่อให้ได้ Date object จริง ไม่ใช่ string ที่ parse ไม่ได้
     var configSheet = masterSs.getSheetByName('Exam_Config');
@@ -363,7 +371,7 @@ function getExamData(personalId) {
     var scores = SpreadsheetApp.openById(DB_SHARDS['EXAM']).getSheetByName('Test_Scores').getDataRange().getDisplayValues();
     var attempts = 0, bestScore = 0;
     for (var j = 1; j < scores.length; j++) {
-        if (scores[j][1] === personalId && scores[j][2] === activeExam.type) { attempts++; bestScore = Math.max(bestScore, parseInt(scores[j][3]) || 0); }
+        if (normalizePersonalId(scores[j][1]) === normalizedPersonalId && scores[j][2] === activeExam.type) { attempts++; bestScore = Math.max(bestScore, parseInt(scores[j][3]) || 0); }
     }
 
     var qbData = masterSs.getSheetByName('Questions_Bank').getDataRange().getDisplayValues();
@@ -377,13 +385,14 @@ function getExamData(personalId) {
 }
 
 function submitExam(payload) {
-    SpreadsheetApp.openById(DB_SHARDS['EXAM']).getSheetByName('Test_Scores').appendRow(["EXAM-" + new Date().getTime(), payload.personal_id, payload.test_type, payload.score, payload.max_score, getThaiTime()]);
+    var normalizedPersonalId = normalizePersonalId(payload.personal_id);
+    SpreadsheetApp.openById(DB_SHARDS['EXAM']).getSheetByName('Test_Scores').appendRow(["EXAM-" + new Date().getTime(), normalizedPersonalId, payload.test_type, payload.score, payload.max_score, getThaiTime()]);
     return { status: 'success', score: payload.score };
 }
 
 function getSurveyData(payload) {
     var surveyType = payload.survey_type || "";
-    var personalId = payload.personal_id || "";
+    var personalId = normalizePersonalId(payload.personal_id || "");
     var masterSs = SpreadsheetApp.getActiveSpreadsheet();
     var qData = masterSs.getSheetByName('Questions_Bank').getDataRange().getDisplayValues();
     var questions = [];
@@ -400,7 +409,7 @@ function getSurveyData(payload) {
             // ดึงข้อมูลว่าประเมินใครไปแล้วบ้าง
             var evalLogs = SpreadsheetApp.openById(DB_SHARDS['SPEAKER']).getSheets()[0].getDataRange().getDisplayValues();
             for (var e = 1; e < evalLogs.length; e++) {
-                if (evalLogs[e][1] === personalId) evaluatedList.push(evalLogs[e][2].toString().trim());
+                if (normalizePersonalId(evalLogs[e][1]) === personalId) evaluatedList.push(evalLogs[e][2].toString().trim());
             }
         }
         var spkSheet = masterSs.getSheetByName('Speakers_Config');
@@ -424,7 +433,7 @@ function getSurveyData(payload) {
     if (surveyType.toUpperCase() === 'PROJECT_SURVEY' && personalId) {
         var projLogs = SpreadsheetApp.openById(DB_SHARDS['PROJECT']).getSheets()[0].getDataRange().getDisplayValues();
         for (var p = 1; p < projLogs.length; p++) {
-            if (projLogs[p][1] && projLogs[p][1].toString().trim() === personalId.toString().trim()) {
+            if (normalizePersonalId(projLogs[p][1]) === personalId) {
                 projectEvaluated = true;
                 break;
             }
@@ -444,7 +453,7 @@ function submitProjectEval(payload) {
         var sheet = ss.getSheets()[0];
 
         var logId = "PROJ-" + new Date().getTime();
-        var personalId = payload.personal_id || "Unknown";
+        var personalId = normalizePersonalId(payload.personal_id || "Unknown");
         var targetId = payload.target_id || "PROJECT";
         var answersJson = JSON.stringify(payload.answers || {});
         var timestamp = getThaiTime();
@@ -466,7 +475,7 @@ function submitSpeakerEval(payload) {
         var sheet = ss.getSheets()[0];
 
         var logId = "SPK-" + new Date().getTime();
-        var personalId = payload.personal_id || "Unknown";
+        var personalId = normalizePersonalId(payload.personal_id || "Unknown");
         var targetId = payload.target_id || "Unknown_SPK";
         var answersJson = JSON.stringify(payload.answers || {});
         var timestamp = getThaiTime();
@@ -482,12 +491,13 @@ function submitSpeakerEval(payload) {
 }
 
 function getAssignmentData(personalId) {
+    var normalizedPersonalId = normalizePersonalId(personalId);
     var masterSs = SpreadsheetApp.getActiveSpreadsheet();
     var userSheet = masterSs.getSheetByName('Users');
     var usersData = userSheet.getDataRange().getDisplayValues();
     var userGroup = "ALL";
     for (var u = 1; u < usersData.length; u++) {
-        if (usersData[u][0].toString().trim().toLowerCase() === personalId.toString().trim().toLowerCase()) { userGroup = usersData[u][5].toString().trim(); break; }
+        if (normalizePersonalId(usersData[u][0]) === normalizedPersonalId) { userGroup = usersData[u][5].toString().trim(); break; }
     }
     var configs = masterSs.getSheetByName('Assignment_Config').getDataRange().getDisplayValues();
     var logs = SpreadsheetApp.openById(DB_SHARDS['ASSIGNMENT']).getSheetByName('Assignment_Log').getDataRange().getDisplayValues();
@@ -502,7 +512,7 @@ function getAssignmentData(personalId) {
         }
     }
     for (var j = 1; j < logs.length; j++) {
-        if (logs[j][1].toString().trim().toLowerCase() === personalId.toString().trim().toLowerCase()) {
+        if (normalizePersonalId(logs[j][1]) === normalizedPersonalId) {
             userSubmissions[logs[j][2]] = { submission_type: logs[j][3], file_link: logs[j][4], timestamp: logs[j][5], status: logs[j][6], feedback: logs[j][7], is_late: logs[j][8] };
         }
     }
@@ -510,6 +520,7 @@ function getAssignmentData(personalId) {
 }
 
 function submitAssignment(payload) {
+    var normalizedPersonalId = normalizePersonalId(payload.personal_id);
     var assignSs = SpreadsheetApp.openById(DB_SHARDS['ASSIGNMENT']);
     var sheet = assignSs.getSheetByName('Assignment_Log');
     var rawTimestamp = new Date(); var logId = "ASN-" + rawTimestamp.getTime();
@@ -525,21 +536,22 @@ function submitAssignment(payload) {
             var originalName = payload.fileName || "Uploaded_File";
             var extension = originalName.lastIndexOf(".") !== -1 ? originalName.substring(originalName.lastIndexOf(".")) : "";
             var timeString = Utilities.formatDate(rawTimestamp, "Asia/Bangkok", "dd-MM-yyyy_HHmmss");
-            var newFileName = payload.personal_id + "_" + timeString + extension;
+            var newFileName = normalizedPersonalId + "_" + timeString + extension;
             var blob = Utilities.newBlob(Utilities.base64Decode(payload.base64Data), payload.mimeType || MimeType.PDF, newFileName);
             var file = targetFolder.createFile(blob);
             finalLink = file.getUrl();
         } catch (e) { return { status: 'error', message: 'Drive Error: ' + e.message }; }
     }
-    sheet.appendRow([logId, payload.personal_id, payload.assign_id, payload.submission_type, finalLink, getThaiTime(), "รอตรวจ", "", "", payload.is_late]);
+    sheet.appendRow([logId, normalizedPersonalId, payload.assign_id, payload.submission_type, finalLink, getThaiTime(), "รอตรวจ", "", "", payload.is_late]);
     return { status: 'success' };
 }
 
 function cancelAssignment(payload) {
+    var normalizedPersonalId = normalizePersonalId(payload.personal_id);
     var sheet = SpreadsheetApp.openById(DB_SHARDS['ASSIGNMENT']).getSheetByName('Assignment_Log');
     var data = sheet.getDataRange().getValues();
     for (var i = data.length - 1; i >= 1; i--) {
-        if (data[i][1] === payload.personal_id && data[i][2] === payload.assign_id) {
+        if (normalizePersonalId(data[i][1]) === normalizedPersonalId && data[i][2] === payload.assign_id) {
             if (data[i][6] === 'รอตรวจ' || data[i][6] === 'แก้ไข') {
                 sheet.getRange(i + 1, 7).setValue('ยกเลิก'); return { status: 'success' };
             } else { return { status: 'error', message: 'ไม่สามารถยกเลิกได้ เนื่องจากตรวจให้คะแนนแล้ว' }; }
